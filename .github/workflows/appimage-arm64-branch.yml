@@ -1,0 +1,86 @@
+name: ARM64 AppImage (Branch)
+
+on:
+  workflow_dispatch:
+    inputs:
+      azahar_repository:
+        description: Azahar Git repository to build
+        required: true
+        default: https://github.com/virtudude/azahar.git
+        type: string
+      azahar_ref:
+        description: Branch or tag to build
+        required: true
+        default: drm-leasing
+        type: string
+
+concurrency:
+  group: arm64-appimage-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build AppImage (aarch64)
+    runs-on: ubuntu-24.04-arm
+    container: ghcr.io/pkgforge-dev/archlinux:latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Preparing Container
+        uses: pkgforge-dev/anylinux-setup-action@0964f2258d6c93d1391359978dde081fd8b3c6af # v2
+      - name: Install Dependencies
+        env:
+          AZAHAR_REPOSITORY: ${{ inputs.azahar_repository }}
+          AZAHAR_REF: ${{ inputs.azahar_ref }}
+        run: DEVEL_RELEASE=1 /bin/sh ./get-dependencies.sh
+      - name: Make AppImage
+        env:
+          APPIMAGE_RELEASE_TAG: drm-leasing
+        run: DEVEL_RELEASE=1 /bin/sh ./make-appimage.sh
+      - name: Upload artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: AppImage-aarch64
+          path: dist
+
+  release:
+    name: Publish DRM leasing prerelease
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download AppImage
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: AppImage-aarch64
+          path: release-assets
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: drm-leasing
+          RELEASE_TITLE: Azahar DRM Leasing (ARM64)
+          RELEASE_NOTES: Built from ${{ inputs.azahar_repository }} at ref ${{ inputs.azahar_ref }}.
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' |
+              while IFS= read -r asset; do
+                gh release delete-asset "$RELEASE_TAG" "$asset" --yes
+              done
+            gh release edit "$RELEASE_TAG" \
+              --title "$RELEASE_TITLE" \
+              --notes "$RELEASE_NOTES" \
+              --prerelease \
+              --latest=false
+          else
+            gh release create "$RELEASE_TAG" \
+              --title "$RELEASE_TITLE" \
+              --notes "$RELEASE_NOTES" \
+              --prerelease \
+              --latest=false \
+              --target "$GITHUB_SHA"
+          fi
+          gh release upload "$RELEASE_TAG" release-assets/*

@@ -59,7 +59,8 @@ get-debloated-pkgs --add-common ffmpeg-mini
 
 echo "Building Azahar..."
 echo "---------------------------------------------------------------"
-REPO="https://github.com/azahar-emu/azahar.git"
+REPO="${AZAHAR_REPOSITORY:-https://github.com/azahar-emu/azahar.git}"
+REF="${AZAHAR_REF:-master}"
 
 case "$ARCH" in
 	x86_64)  set -- -march=x86-64-v3 -O3 -flto=thin -fuse-ld=lld -DNDEBUG;;
@@ -67,7 +68,7 @@ case "$ARCH" in
 	*)       >&2 echo "ERROR: Unknown arch: $ARCH"; exit 1;;
 esac
 
-git clone --recursive "$REPO" ./azahar
+git clone --recursive --branch "$REF" "$REPO" ./azahar
 cd ./azahar
 
 if [ "${DEVEL_RELEASE-}" = 1 ]; then

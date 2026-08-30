@@ -6,7 +6,8 @@ ARCH=$(uname -m)
 export ARCH
 export OUTPATH=./dist
 export ADD_HOOKS="self-updater.hook:x86-64-v3-check.hook"
-export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
+RELEASE_TAG="${APPIMAGE_RELEASE_TAG:-latest}"
+export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|$RELEASE_TAG|*$ARCH.AppImage.zsync"
 export APPNAME=Azahar
 export DESKTOP=/usr/share/applications/org.azahar_emu.Azahar.desktop
 export ICON=/usr/share/icons/hicolor/512x512/apps/org.azahar_emu.Azahar.png
